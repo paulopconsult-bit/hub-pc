@@ -1,0 +1,29 @@
+# Ignorar ambientes virtuais locais
+.venv/
+venv/
+env/
+
+# Caches do interpretador Python e compiladores
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Metadados inúteis do Sistema Operacional Host
+desktop.ini
+Thumbs.db
+.DS_Store
+
+# Arquivos administrativos do próprio Docker
+Dockerfile
+dockerfile
+.dockerignore
+
+# Chaves de autenticação GCP - Robô Terraform
+key-dev.json
+key-prod.json
+
+# Arquivo de partição de dados intermediária, que pode ser usado sob demanda, 
+# mas não é necessário para o processo de construção do container, se não for usado.
+02-bronze-03-silver-cleaned-part-cliente.py

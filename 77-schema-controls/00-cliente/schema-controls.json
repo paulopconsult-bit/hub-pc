@@ -1,0 +1,4 @@
+{
+  "colunas_esperadas": ["id_cliente", "nome", "estado", "data_nascimento"],
+  "formato": "csv"
+}

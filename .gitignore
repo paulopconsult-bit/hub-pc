@@ -1,0 +1,68 @@
+# ==============================================================================
+# HUB-PC (V2) - MASTER GITIGNORE (PADRÃO OURO BIG TECH)
+# ==============================================================================
+
+# ==============================================================================
+# 1. SEGURANÇA & CREDENCIAIS (CRÍTICO - FINOPS & RISCO ZERO)
+# ==============================================================================
+# Bloqueia chaves físicas de Service Accounts locais
+terraform/*.json
+*.json
+*.pem
+*.key
+.env
+
+# ==============================================================================
+# 2. PLANO DE GOVERNANÇA (EXCEÇÃO DO SCHEMA-AS-CODE)
+# ==============================================================================
+# Força o Git a RASTREAR os contratos de dados JSON da camada 77(exceção de outros arquivos JSON)
+!77-schema-controls/
+!77-schema-controls/**/*.json
+
+# ==============================================================================
+# 3. CHÃO DE FÁBRICA / DADOS PESADOS (NÃO SUBIR PARA O GIT)
+# ==============================================================================
+# Bloqueia todo o armazenamento local para evitar estouro de storage no GitHub
+01-00-raw/
+02-00-raw-backup/
+02-01-bronze/
+02-02-quarantine-erros/
+03-silver-cleaned/
+04-silver-enriched/
+05-gold-business/
+06-quality-reports/
+88-logs-execution/
+99-metadata-manifests/
+100-staging-tests/
+
+# ==============================================================================
+# 4. FERRAMENTAS DE PLATAFORMA (TERRAFORM ESTADOS LOCAL)
+# ==============================================================================
+# Bloqueia arquivos de estado local do Terraform (gerenciados via Cloud Bucket backend)
+.terraform/
+*.tfstate
+*.tfstate.backup
+.terraform.lock.hcl
+
+# ==============================================================================
+# 5. TEMPORÁRIOS DO AMBIENTE COMPUTACIONAL (PYTHON / CONTÊINERES)
+# ==============================================================================
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.vscode/
+.idea/
+*.log
+
+
+# ==============================================================================
+# 6. Script incremental Bronze -> Silver (watermark por PIPELINE_RUN_ID).
+# Promover para produção após validação. caso tenha demanda para utiliza-lo e remover daqui.
+# ==============================================================================
+00-scripts/00-cliente/02-bronze-03-silver-cleaned-part-cliente.py
+
+# Metadados inúteis do Sistema Operacional Host
+desktop.ini

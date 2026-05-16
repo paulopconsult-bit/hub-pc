@@ -1,0 +1,29 @@
+# 1. Imagem base oficial do Python (Alinhada com a V2 da especificação)
+FROM python:3.13-slim
+
+# Variáveis de ambiente para otimização extrema do runtime Python (FinOps)
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    ROOT_PROJETO=/app/ls
+
+# Atualiza pacotes do Linux para mitigar vulnerabilidades e limpa o cache
+RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
+
+# 2. Define o diretório de trabalho interno do container
+WORKDIR /app
+
+# 3. Copia o arquivo requirements local e instala as dependências sem cache
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+
+# 4. Copia os scripts do microsserviço (Eles já estão na pasta corrente do host)
+COPY . .
+
+# 5. Segurança Corporativa: Execução com usuário sem privilégios administrativos
+RUN useradd -u 8888 appuser && chown -R appuser:appuser /app
+USER appuser
+
+# 6. Comando de disparo do Maestro Orquestrador Central
+CMD ["python", "main-orchestrator-cliente.py"]
