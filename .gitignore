@@ -43,6 +43,7 @@ terraform/*.json
 *.tfstate
 *.tfstate.backup
 .terraform.lock.hcl
+*.tfvars
 
 # ==============================================================================
 # 5. TEMPORÁRIOS DO AMBIENTE COMPUTACIONAL (PYTHON / CONTÊINERES)
