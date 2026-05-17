@@ -43,6 +43,7 @@ terraform/*.json
 *.tfstate
 *.tfstate.backup
 .terraform.lock.hcl
+*.tfvars
 
 # ==============================================================================
 # 5. TEMPORÁRIOS DO AMBIENTE COMPUTACIONAL (PYTHON / CONTÊINERES)
@@ -66,3 +67,6 @@ __pycache__/
 
 # Metadados inúteis do Sistema Operacional Host
 desktop.ini
+
+# Bloquia readme local (caso haja) para evitar confusão com o README do repositório
+/README.txt

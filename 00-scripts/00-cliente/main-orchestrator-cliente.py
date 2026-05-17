@@ -7,7 +7,7 @@ import sys         # Para garantir o uso do interpretador Python correto
 from datetime import datetime  # Para geração do PIPELINE_RUN_ID único
 
 # ==============================================================================
-# STEP 0: AMBIENTE E MAPEAMENTO DE SCRIPTS
+# STEP 0: AMBIENTE E MAPEAMENTO DE SCRIPTS (ABSTRAÇÃO)
 # ==============================================================================
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 

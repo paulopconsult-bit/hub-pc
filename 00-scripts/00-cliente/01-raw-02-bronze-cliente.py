@@ -1,6 +1,6 @@
 # ==============================================================================
 # BIBLIOTECAS (As ferramentas herméticas do nosso robô)
-# Host Dev
+# Host / Dev
 # Adição de Campos de Controle (Bronze) - Metadados de Aplicação (Inseridos Manualmente)
 # v3 — Imports não utilizados removidos (pa, pq). Rastreio de RUN_ID adicionado.
 # ==============================================================================
@@ -20,7 +20,7 @@ except ImportError:
     storage = None
 
 # ==============================================================================
-# STEP 0: CONTRATO DE AMBIENTE E ABSTRAÇÃO DE I/O (ARQUITETURA PURA V2)
+# STEP 0: O CONTRATO DE AMBIENTE E ABSTRAÇÃO DE I/O (ARQUITETURA PURA V2)
 # ==============================================================================
 EXECUTION_MODE  = os.environ.get("EXECUTION_MODE", "local").lower()
 TENANT_ID       = os.environ.get("TENANT_ID", "00-cliente")

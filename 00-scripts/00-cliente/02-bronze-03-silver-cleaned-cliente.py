@@ -1,7 +1,7 @@
 # ==============================================================================
 # BIBLIOTECAS (As ferramentas da nossa faxina técnica)
 # v3 — qtd_inicial declarada antes dos blocos try (fix UnboundLocalError).
-#      Print de rastreio do PIPELINE_RUN_ID adicionado. Alias desnecessário removido.
+#      Print de rastreio do PIPELINE_RUN_ID adicionado.
 # ==============================================================================
 import os                      # Gestão de caminhos e variáveis de ambiente
 import sys                     # Controle de saídas do sistema e erros críticos
