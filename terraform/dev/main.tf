@@ -197,3 +197,79 @@ resource "google_storage_bucket_iam_member" "engine_dw" {
   role   = "roles/storage.objectAdmin"
   member = "serviceAccount:${google_service_account.engine.email}"
 }
+
+# ==============================================================================
+# STEP 7: PERMISSAO PARA SA-ENGINE INVOCAR CLOUD RUN JOBS
+# A mesma conta de servico do pipeline recebe permissao de invocar o job.
+# Em Big Tech: conta separada por responsabilidade (invoker vs executor).
+# ==============================================================================
+resource "google_project_iam_member" "engine_run_invoker" {
+  project = var.project_id
+  role    = "roles/run.invoker"
+  member  = "serviceAccount:${google_service_account.engine.email}"
+}
+
+# ==============================================================================
+# STEP 8: CLOUD RUN JOB (EXECUTOR DO PIPELINE NO GCP)
+# Aponta para a imagem no Artifact Registry e executa o orquestrador.
+# A imagem e atualizada pelo CI/CD a cada push no GitHub.
+# ==============================================================================
+resource "google_cloud_run_v2_job" "pipeline_cliente" {
+  project  = var.project_id
+  name     = "job-lakehouse-00-cliente-dev"
+  location = var.regiao
+
+  template {
+    template {
+      service_account = google_service_account.engine.email
+
+      containers {
+        image = "southamerica-east1-docker.pkg.dev/${var.project_id}/repo-lakehouse-cliente/microsvc-cliente:latest"
+
+        env {
+          name  = "EXECUTION_MODE"
+          value = "cloud"
+        }
+        env {
+          name  = "TENANT_ID"
+          value = "00-cliente"
+        }
+        env {
+          name  = "BUCKET_LAKEHOUSE"
+          value = "hub-pc-dev-stg-lakehouse"
+        }
+        env {
+          name  = "BUCKET_DW"
+          value = "hub-pc-dev-stg-dw"
+        }
+      }
+    }
+  }
+
+  depends_on = [google_artifact_registry_repository.lakehouse]
+}
+
+# ==============================================================================
+# STEP 9: CLOUD SCHEDULER (AGENDADOR DO JOB)
+# Dispara o job automaticamente conforme o cron definido.
+# Cron atual: todo dia as 13:00 horario de Brasilia (16:00 UTC).
+# Em Big Tech: ajustar conforme SLA de entrega de dados do negocio.
+# ==============================================================================
+resource "google_cloud_scheduler_job" "scheduler_cliente" {
+  project   = var.project_id
+  name      = "scheduler-lakehouse-00-cliente-dev"
+  region    = var.regiao
+  schedule  = "0 16 * * *"
+  time_zone = "America/Sao_Paulo"
+
+  http_target {
+    http_method = "POST"
+    uri         = "https://${var.regiao}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${var.project_id}/jobs/job-lakehouse-00-cliente-dev:run"
+
+    oauth_token {
+      service_account_email = google_service_account.engine.email
+    }
+  }
+
+  depends_on = [google_cloud_run_v2_job.pipeline_cliente]
+}
