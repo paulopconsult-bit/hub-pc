@@ -167,7 +167,7 @@ resource "google_artifact_registry_repository" "lakehouse" {
   location      = var.regiao
   repository_id = "repo-lakehouse-cliente"
   format        = "DOCKER"
-  description   = "Repositório de imagens Docker — microsserviço 00-cliente"
+  description = "Repositorio de imagens Docker - microsservico 00-cliente"
 
   depends_on = [google_project_service.artifact_registry]
 }
