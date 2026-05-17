@@ -198,6 +198,25 @@ resource "google_storage_bucket_iam_member" "engine_dw" {
   member = "serviceAccount:${google_service_account.engine.email}"
 }
 
+# Permissoes para CI/CD — sa-engine faz push de imagem e atualiza Cloud Run Job
+resource "google_project_iam_member" "engine_artifact_writer" {
+  project = var.project_id
+  role    = "roles/artifactregistry.writer"
+  member  = "serviceAccount:${google_service_account.engine.email}"
+}
+
+resource "google_project_iam_member" "engine_run_developer" {
+  project = var.project_id
+  role    = "roles/run.developer"
+  member  = "serviceAccount:${google_service_account.engine.email}"
+}
+
+resource "google_project_iam_member" "engine_sa_user" {
+  project = var.project_id
+  role    = "roles/iam.serviceAccountUser"
+  member  = "serviceAccount:${google_service_account.engine.email}"
+}
+
 # ==============================================================================
 # STEP 7: PERMISSAO PARA SA-ENGINE INVOCAR CLOUD RUN JOBS
 # A mesma conta de servico do pipeline recebe permissao de invocar o job.
@@ -225,7 +244,7 @@ resource "google_cloud_run_v2_job" "pipeline_cliente" {
       service_account = google_service_account.engine.email
 
       containers {
-        image = "southamerica-east1-docker.pkg.dev/${var.project_id}/repo-lakehouse-cliente/microsvc-cliente:latest"
+        image = "southamerica-east1-docker.pkg.dev/${var.project_id}/repo-lakehouse-cliente/microsvc-00-cliente:latest"
 
         env {
           name  = "EXECUTION_MODE"

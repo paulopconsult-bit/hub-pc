@@ -1,6 +1,6 @@
 # ==============================================================================
 # BIBLIOTECAS (As ferramentas herméticas do nosso robô)
-# Host Dev
+# Host / Dev
 # Adição de Campos de Controle (Bronze) - Metadados de Aplicação (Inseridos Manualmente)
 # v3 — Imports não utilizados removidos (pa, pq). Rastreio de RUN_ID adicionado.
 # ==============================================================================
