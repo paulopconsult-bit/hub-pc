@@ -9,71 +9,113 @@ on:
       - '.github/workflows/deploy-dev.yml'
 
 # Evita deploys simultaneos na mesma branch
-# Se um novo push ocorrer antes do deploy anterior terminar, cancela o anterior
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  deploy-dev:
+  # ==============================================================================
+  # JOB 1: DETECTAR TENANTS ALTERADOS
+  # Varre os arquivos alterados no commit e identifica quais tenants foram tocados
+  # Retorna uma lista de tenants para o job de deploy processar em paralelo
+  # ==============================================================================
+  detect-tenants:
     runs-on: ubuntu-latest
+    outputs:
+      tenants: ${{ steps.detect.outputs.tenants }}
+      has_tenants: ${{ steps.detect.outputs.has_tenants }}
 
     steps:
-      # ==============================================================================
-      # STEP 1: CHECKOUT DO CODIGO
-      # Baixa o codigo do repositorio para o runner do GitHub Actions
-      # ==============================================================================
+      - name: Checkout Codigo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Detectar Tenants Alterados
+        id: detect
+        run: |
+          CHANGED=$(git diff --name-only HEAD~1 HEAD)
+          echo "Arquivos alterados:"
+          echo "$CHANGED"
+
+          TENANTS=$(echo "$CHANGED" \
+            | grep '^00-scripts/' \
+            | awk -F'/' '{print $2}' \
+            | sort -u \
+            | jq -R . \
+            | jq -sc .)
+
+          echo "Tenants detectados: $TENANTS"
+
+          if [ "$TENANTS" = "[]" ] || [ -z "$TENANTS" ]; then
+            echo "has_tenants=false" >> $GITHUB_OUTPUT
+            echo "tenants=[]" >> $GITHUB_OUTPUT
+          else
+            echo "has_tenants=true" >> $GITHUB_OUTPUT
+            echo "tenants=$TENANTS" >> $GITHUB_OUTPUT
+          fi
+
+  # ==============================================================================
+  # JOB 2: DEPLOY POR TENANT (MATRIX BUILD)
+  # Para cada tenant alterado: builda imagem, sobe para Artifact Registry, atualiza job
+  # fail-fast: false garante que um tenant com falha nao bloqueia os outros
+  # ==============================================================================
+  deploy-dev:
+    needs: detect-tenants
+    if: needs.detect-tenants.outputs.has_tenants == 'true'
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        tenant: ${{ fromJson(needs.detect-tenants.outputs.tenants) }}
+      fail-fast: false
+
+    steps:
       - name: Checkout Codigo
         uses: actions/checkout@v4
 
       # ==============================================================================
       # STEP 2: AUTENTICACAO NO GCP
-      # Usa o secret GCP_SA_KEY_DEV — chave da sa-engine-00-cliente-dev
+      # Usa o secret GCP_SA_KEY_DEV — chave da sa-engine do ambiente dev
       # ==============================================================================
       - name: Autenticar no Google Cloud
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY_DEV }}
 
-      # ==============================================================================
-      # STEP 3: CONFIGURAR GCLOUD CLI
-      # ==============================================================================
       - name: Configurar CLI do Google Cloud
         uses: google-github-actions/setup-gcloud@v2
 
-      # ==============================================================================
-      # STEP 4: CONFIGURAR DOCKER PARA O ARTIFACT REGISTRY
-      # Autoriza o Docker a fazer push para o repositorio do GCP dev
-      # ==============================================================================
       - name: Configurar Docker para Artifact Registry
         run: gcloud auth configure-docker southamerica-east1-docker.pkg.dev
 
       # ==============================================================================
-      # STEP 5: BUILD E PUSH DA IMAGEM DOCKER
-      # Usa o SHA do commit como tag — garante unicidade e rastreabilidade
-      # A tag :latest e atualizada em paralelo para o job sempre usar a mais recente
+      # STEP 5: BUILD E PUSH DA IMAGEM DO TENANT ALTERADO
+      # Contexto aponta para a pasta do tenant — cada um tem seu dockerfile e requirements
+      # SHA do commit garante unicidade e rastreabilidade da imagem
       # ==============================================================================
-      - name: Build e Push da Imagem Docker
+      - name: Build e Push da Imagem - ${{ matrix.tenant }}
         run: |
-          IMAGE_BASE="southamerica-east1-docker.pkg.dev/hub-pc-dev/repo-lakehouse-cliente/microsvc-cliente"
+          TENANT="${{ matrix.tenant }}"
+          IMAGE_BASE="southamerica-east1-docker.pkg.dev/hub-pc-dev/repo-lakehouse-cliente/microsvc-$TENANT"
           IMAGE_SHA="${IMAGE_BASE}:${{ github.sha }}"
           IMAGE_LATEST="${IMAGE_BASE}:latest"
 
-          docker build -t $IMAGE_SHA -t $IMAGE_LATEST -f 00-scripts/00-cliente/dockerfile .
+          docker build -t $IMAGE_SHA -t $IMAGE_LATEST 00-scripts/$TENANT/
           docker push $IMAGE_SHA
           docker push $IMAGE_LATEST
 
       # ==============================================================================
-      # STEP 6: ATUALIZAR O CLOUD RUN JOB COM A NOVA IMAGEM
-      # O job passa a usar a nova imagem na proxima execucao
+      # STEP 6: ATUALIZAR O CLOUD RUN JOB DO TENANT
       # Nao dispara o job — execucao e responsabilidade do Scheduler ou humano
       # ==============================================================================
-      - name: Atualizar Cloud Run Job Dev
+      - name: Atualizar Cloud Run Job - ${{ matrix.tenant }}
         run: |
-          IMAGE_BASE="southamerica-east1-docker.pkg.dev/hub-pc-dev/repo-lakehouse-cliente/microsvc-cliente"
+          TENANT="${{ matrix.tenant }}"
+          IMAGE_BASE="southamerica-east1-docker.pkg.dev/hub-pc-dev/repo-lakehouse-cliente/microsvc-$TENANT"
           IMAGE_SHA="${IMAGE_BASE}:${{ github.sha }}"
 
-          gcloud run jobs update job-lakehouse-00-cliente-dev \
+          gcloud run jobs update job-lakehouse-$TENANT-dev \
             --image $IMAGE_SHA \
             --region southamerica-east1 \
             --project hub-pc-dev
