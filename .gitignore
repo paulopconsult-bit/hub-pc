@@ -67,3 +67,6 @@ __pycache__/
 
 # Metadados inúteis do Sistema Operacional Host
 desktop.ini
+
+# Bloquia readme local (caso haja) para evitar confusão com o README do repositório
+/README.txt
