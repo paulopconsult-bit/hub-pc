@@ -1,0 +1,79 @@
+name: Deploy Dev - Lakehouse Hub-PC
+
+# Dispara automaticamente a cada push na branch dev
+on:
+  push:
+    branches: [ "dev" ]
+    paths:
+      - '00-scripts/**'
+      - '.github/workflows/deploy-dev.yml'
+
+# Evita deploys simultaneos na mesma branch
+# Se um novo push ocorrer antes do deploy anterior terminar, cancela o anterior
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy-dev:
+    runs-on: ubuntu-latest
+
+    steps:
+      # ==============================================================================
+      # STEP 1: CHECKOUT DO CODIGO
+      # Baixa o codigo do repositorio para o runner do GitHub Actions
+      # ==============================================================================
+      - name: Checkout Codigo
+        uses: actions/checkout@v4
+
+      # ==============================================================================
+      # STEP 2: AUTENTICACAO NO GCP
+      # Usa o secret GCP_SA_KEY_DEV — chave da sa-engine-00-cliente-dev
+      # ==============================================================================
+      - name: Autenticar no Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY_DEV }}
+
+      # ==============================================================================
+      # STEP 3: CONFIGURAR GCLOUD CLI
+      # ==============================================================================
+      - name: Configurar CLI do Google Cloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      # ==============================================================================
+      # STEP 4: CONFIGURAR DOCKER PARA O ARTIFACT REGISTRY
+      # Autoriza o Docker a fazer push para o repositorio do GCP dev
+      # ==============================================================================
+      - name: Configurar Docker para Artifact Registry
+        run: gcloud auth configure-docker southamerica-east1-docker.pkg.dev
+
+      # ==============================================================================
+      # STEP 5: BUILD E PUSH DA IMAGEM DOCKER
+      # Usa o SHA do commit como tag — garante unicidade e rastreabilidade
+      # A tag :latest e atualizada em paralelo para o job sempre usar a mais recente
+      # ==============================================================================
+      - name: Build e Push da Imagem Docker
+        run: |
+          IMAGE_BASE="southamerica-east1-docker.pkg.dev/hub-pc-dev/repo-lakehouse-cliente/microsvc-cliente"
+          IMAGE_SHA="${IMAGE_BASE}:${{ github.sha }}"
+          IMAGE_LATEST="${IMAGE_BASE}:latest"
+
+          docker build -t $IMAGE_SHA -t $IMAGE_LATEST -f 00-scripts/00-cliente/dockerfile .
+          docker push $IMAGE_SHA
+          docker push $IMAGE_LATEST
+
+      # ==============================================================================
+      # STEP 6: ATUALIZAR O CLOUD RUN JOB COM A NOVA IMAGEM
+      # O job passa a usar a nova imagem na proxima execucao
+      # Nao dispara o job — execucao e responsabilidade do Scheduler ou humano
+      # ==============================================================================
+      - name: Atualizar Cloud Run Job Dev
+        run: |
+          IMAGE_BASE="southamerica-east1-docker.pkg.dev/hub-pc-dev/repo-lakehouse-cliente/microsvc-cliente"
+          IMAGE_SHA="${IMAGE_BASE}:${{ github.sha }}"
+
+          gcloud run jobs update job-lakehouse-00-cliente-dev \
+            --image $IMAGE_SHA \
+            --region southamerica-east1 \
+            --project hub-pc-dev
