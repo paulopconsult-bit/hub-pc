@@ -96,6 +96,10 @@ def step_silver_enriched():
         # FIX: sys.exit(1) para sinalizar falha ao orquestrador (era return silencioso)
         sys.exit(1)
 
+    if qtd_lidas == 0:  # Se não houver dados, encerra o processo com aviso
+        print(f"[INFO] Camada de origem vazia. Sem dados para processar nesta janela.")
+        sys.exit(0)
+
     try:
         # --- 1.1: DEDUPLICAÇÃO (REGRA DE NEGÓCIO: SNAPSHOT ATUAL) ---
         print("Removendo duplicatas (Mantendo a versão mais recente em _at_captura)...")
