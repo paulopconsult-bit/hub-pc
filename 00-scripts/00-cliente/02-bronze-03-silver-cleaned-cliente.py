@@ -84,6 +84,10 @@ def step_silver_clean():
         print(f"Erro Crítico: Impossível ler o diretório Bronze ou tabela vazia. Detalhe: {e}")
         sys.exit(1)
 
+    if qtd_inicial == 0:  # Se não houver dados, encerra o processo com aviso
+        print(f"[INFO] Camada de origem vazia. Sem dados para processar nesta janela.")
+        sys.exit(0)
+
     try:
         print("Higienizando caracteres de controle (\\n, \\r, \\t)...")
         df = df.replace(r'\r+|\n+', ' [NL] ', regex=True)

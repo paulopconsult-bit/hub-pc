@@ -125,7 +125,7 @@ resource "google_storage_bucket" "dw" {
 }
 
 # ==============================================================================
-# STEP 4: BUCKETS DE FERRAMENTAS (ANSIBLE, DATADOG, DATAHUB)
+# STEP 4: BUCKETS DE FERRAMENTAS (ANSIBLE, OBSERVABILITY, DATAHUB)
 # Cada ferramenta tem seu próprio bucket isolado — princípio de menor privilégio.
 # ==============================================================================
 resource "google_storage_bucket" "ansible" {
@@ -138,8 +138,8 @@ resource "google_storage_bucket" "ansible" {
   depends_on                  = [google_project_service.storage]
 }
 
-resource "google_storage_bucket" "datadog" {
-  name                        = "hub-pc-prod-stg-datadog"
+resource "google_storage_bucket" "observability" {
+  name                        = "hub-pc-prod-stg-observability"
   project                     = var.project_id
   location                    = var.regiao
   storage_class               = "STANDARD"

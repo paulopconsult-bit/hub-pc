@@ -99,6 +99,10 @@ def step_gold_business():
         # FIX: sys.exit(1) para sinalizar falha ao orquestrador (era return silencioso)
         sys.exit(1)
 
+    if qtd_lidas == 0:  # Se não houver dados, encerra o processo com aviso
+        print(f"[INFO] Camada de origem vazia. Sem dados para processar nesta janela.")
+        sys.exit(0)
+
     try:
         # --- 1.1: AGREGAÇÃO DE NEGÓCIO DE MARKETING (MAPPING DE MACRO REGIAO) ---
         print("[INFO] Aplicando regra de negocio de Marketing (Mapeamento de Macro Regiao)...")
