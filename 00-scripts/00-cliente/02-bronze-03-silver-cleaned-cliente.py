@@ -1,7 +1,7 @@
 # ==============================================================================
 # BIBLIOTECAS (As ferramentas da nossa faxina técnica)
-# v3 — qtd_inicial declarada antes dos blocos try (fix UnboundLocalError).
-#      Print de rastreio do PIPELINE_RUN_ID adicionado.
+# v4 — Script oficial. Watermark por PIPELINE_RUN_ID — processa apenas registros
+#      do run atual, evitando reprocessamento de dados antigos em janelas vazias.
 # ==============================================================================
 import os                      # Gestão de caminhos e variáveis de ambiente
 import sys                     # Controle de saídas do sistema e erros críticos
@@ -23,6 +23,9 @@ EXECUTION_MODE   = os.environ.get("EXECUTION_MODE", "local").lower()
 TENANT_ID        = os.environ.get("TENANT_ID", "00-cliente")
 PIPELINE_RUN_ID  = os.environ.get("PIPELINE_RUN_ID", f"run-{datetime.now().strftime('%Y%m%d-%H%M%S')}")
 BUCKET_LAKEHOUSE = os.environ.get("BUCKET_LAKEHOUSE", "stg-tf-hub-pc-dev")
+
+# Orquestrador injeta este ID em todos os filhos — manifestos cross-layer rastreáveis por 1 chave.
+# Execução isolada (dev/debug): cada script gera o seu próprio ID.
 
 # ABSTRAÇÃO DA V1: Ponto de montagem idêntico para Dev Local e Container Linux
 BASE_PATH = os.getenv('ROOT_PROJETO', r"D:\cloud\ls")
@@ -66,7 +69,7 @@ def salvar_manifesto_silver(manifesto_dict):
         blob.upload_from_string(conteudo_json, content_type='application/json')
 
 # ==============================================================================
-# STEP 1: PROCESSO DE HIGIENIZAÇÃO (A VASSOURA TÉCNICA)
+# STEP 1: PROCESSO DE HIGIENIZAÇÃO (FILTRO INCREMENTAL POR PIPELINE_RUN_ID)
 # ==============================================================================
 def step_silver_clean():
     print(f"{'='*80}\n[STEP 02 -> 03] SILVER CLEAN CONSOLIDADA: {TENANT_ID.upper()}\n{'='*80}")
@@ -74,21 +77,40 @@ def step_silver_clean():
     print(f"[INFO] Lendo dados da Bronze em: {PATH_BRONZE}")
 
     # FIX: Declarado antes dos blocos try para garantir escopo no except do segundo bloco
-    qtd_inicial = 0
+    qtd_inicial     = 0
+    qtd_incremental = 0
 
+    # --- LEITURA DA BRONZE ---
     try:
         df = pd.read_parquet(PATH_BRONZE, engine='pyarrow')
         qtd_inicial = len(df)
-        print(f"Bronze lida com sucesso: {qtd_inicial} registros consolidados.")
+        print(f"Bronze total lida: {qtd_inicial} registros acumulados.")
     except Exception as e:
         print(f"Erro Crítico: Impossível ler o diretório Bronze ou tabela vazia. Detalhe: {e}")
         sys.exit(1)
 
-    if qtd_inicial == 0:  # Se não houver dados, encerra o processo com aviso
-        print(f"[INFO] Camada de origem vazia. Sem dados para processar nesta janela.")
+    # Encerra se Bronze vazia — sistema virgem ou RAW vazia no run anterior
+    if qtd_inicial == 0:
+        print(f"[AVISO] RAW vazia. Arquivo nao disponibilizado nesta janela. Monitorar regularidade da fonte.")
         sys.exit(0)
 
+    # --- FILTRO INCREMENTAL E HIGIENIZAÇÃO ---
     try:
+        # ==============================================================================
+        # INCREMENTAL LOAD por PIPELINE_RUN_ID (watermark simplificado).
+        # Filtra apenas os registros gerados no run atual antes de processar.
+        # Evita reprocessamento de dados antigos quando RAW está vazia.
+        # Em Big Tech: substituir por watermark baseado em timestamp ou sequencial
+        # integrado com catálogo (DataHub) para controle de offset por camada.
+        # ==============================================================================
+        df = df[df['_pipeline_run_id'] == PIPELINE_RUN_ID].copy()
+        qtd_incremental = len(df)
+        print(f"Registros do run atual ({PIPELINE_RUN_ID}): {qtd_incremental} registros para processar.")
+
+        if qtd_incremental == 0:
+            print(f"[AVISO] RAW vazia. Arquivo nao disponibilizado nesta janela. Monitorar regularidade da fonte.")
+            sys.exit(0)
+
         print("Higienizando caracteres de controle (\\n, \\r, \\t)...")
         df = df.replace(r'\r+|\n+', ' [NL] ', regex=True)
         df = df.replace(r'\t+', ' ', regex=True)
@@ -107,7 +129,7 @@ def step_silver_clean():
         if 'nome' in df.columns:
             df['nome'] = df['nome'].str.title()
 
-        df['_at_higienizacao']       = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        df['_at_higienizacao']        = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         df['_silver_pipeline_run_id'] = PIPELINE_RUN_ID
 
         if EXECUTION_MODE == "local":
@@ -119,7 +141,7 @@ def step_silver_clean():
         print(f"[INFO] Gravando arquivo Parquet purificado em: {destino_parquet}")
         df.to_parquet(destino_parquet, index=False, engine='pyarrow', compression='snappy')
 
-        print(f"Sucesso: {len(df)} linhas limpas e entregues na Silver Clean.")
+        print(f"Sucesso: {qtd_incremental} linhas do run atual limpas e entregues na Silver Clean.")
 
         manifesto = {
             "pipeline_run_id":    PIPELINE_RUN_ID,
@@ -127,7 +149,7 @@ def step_silver_clean():
             "camada_alvo":        "SILVER-CLEANED",
             "status_execucao":    "SUCESSO",
             "data_processamento": datetime.now().isoformat(),
-            "linhas_lidas":       qtd_inicial,
+            "linhas_lidas":       qtd_incremental,
             "linhas_gravadas":    len(df),
             "linhas_rejeitadas":  0,
             "origem_caminho":     PATH_BRONZE,
@@ -144,7 +166,7 @@ def step_silver_clean():
             "camada_alvo":        "SILVER-CLEANED",
             "status_execucao":    "ERRO_TRANSFORMACAO",
             "data_processamento": datetime.now().isoformat(),
-            "linhas_lidas":       qtd_inicial,
+            "linhas_lidas":       qtd_incremental,
             "linhas_gravadas":    0,
             "linhas_rejeitadas":  0,
             "origem_caminho":     PATH_BRONZE,
