@@ -185,8 +185,8 @@ def executar_esteira_bronze():
 
     arquivos = listar_arquivos_input()
     if not arquivos:
-        print("Camada RAW limpa. Sem novos arquivos para processar nesta janela.")
-        return
+        print("[AVISO] RAW vazia. Arquivo nao disponibilizado nesta janela. Monitorar regularidade da fonte.")
+        sys.exit(0)
 
     for arquivo in arquivos:
         nome_original = arquivo["nome"]

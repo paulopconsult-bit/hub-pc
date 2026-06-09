@@ -103,6 +103,11 @@ def step_gold_business():
         print(f"[INFO] Camada de origem vazia. Sem dados para processar nesta janela.")
         sys.exit(0)
 
+    # Watermark — verifica se Silver Enriched foi atualizada neste run
+    if df['_enriched_pipeline_run_id'].iloc[0] != PIPELINE_RUN_ID:
+        print(f"[AVISO] RAW vazia. Arquivo nao disponibilizado nesta janela. Monitorar regularidade da fonte.")
+        sys.exit(0)
+
     try:
         # --- 1.1: AGREGAÇÃO DE NEGÓCIO DE MARKETING (MAPPING DE MACRO REGIAO) ---
         print("[INFO] Aplicando regra de negocio de Marketing (Mapeamento de Macro Regiao)...")

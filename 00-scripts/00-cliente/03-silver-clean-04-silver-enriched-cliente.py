@@ -100,6 +100,11 @@ def step_silver_enriched():
         print(f"[INFO] Camada de origem vazia. Sem dados para processar nesta janela.")
         sys.exit(0)
 
+    # Watermark — verifica se Silver Cleaned foi atualizada neste run
+    if df['_silver_pipeline_run_id'].iloc[0] != PIPELINE_RUN_ID:
+        print(f"[AVISO] RAW vazia. Arquivo nao disponibilizado nesta janela. Monitorar regularidade da fonte.")
+        sys.exit(0)
+        
     try:
         # --- 1.1: DEDUPLICAÇÃO (REGRA DE NEGÓCIO: SNAPSHOT ATUAL) ---
         print("Removendo duplicatas (Mantendo a versão mais recente em _at_captura)...")
