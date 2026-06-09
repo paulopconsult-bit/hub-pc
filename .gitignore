@@ -58,15 +58,9 @@ __pycache__/
 .idea/
 *.log
 
-
 # ==============================================================================
-# 6. Script incremental Bronze -> Silver (watermark por PIPELINE_RUN_ID).
-# Promover para produção após validação. caso tenha demanda para utiliza-lo e remover daqui.
+# 6. Pastas e Arquivos de Configuração Local (IDE, OS, etc.)
 # ==============================================================================
-00-scripts/00-cliente/02-bronze-03-silver-cleaned-part-cliente.py
 
 # Metadados inúteis do Sistema Operacional Host
 desktop.ini
-
-# Bloquia readme local (caso haja) para evitar confusão com o README do repositório
-/README.txt
