@@ -82,10 +82,17 @@ def step_silver_enriched():
     else:
         origem = f"{PATH_CLEAN}/cliente.parquet".replace("\\", "/")
 
-    # FIX: sys.exit(1) para sinalizar falha ao orquestrador (era return silencioso)
-    if not os.path.exists(origem) and EXECUTION_MODE == "local":
-        print(f"[ERRO CRITICO] Origem Clean nao encontrada no caminho: {origem}")
-        sys.exit(1)
+    # Verificação de existência — local e cloud
+    if EXECUTION_MODE == "local":
+        if not os.path.exists(origem):
+            print(f"[AVISO] RAW vazia. Arquivo nao disponibilizado nesta janela. Monitorar regularidade da fonte.")
+            sys.exit(0)
+    else:
+        client = obter_cliente_gcs()
+        bucket_nome, prefixo_nome = quebrar_uri_gcs(origem)
+        if not client.bucket(bucket_nome).blob(prefixo_nome).exists():
+            print(f"[AVISO] RAW vazia. Arquivo nao disponibilizado nesta janela. Monitorar regularidade da fonte.")
+            sys.exit(0)
 
     try:
         df = pd.read_parquet(origem, engine='pyarrow')
